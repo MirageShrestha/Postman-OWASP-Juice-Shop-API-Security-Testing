@@ -1,0 +1,478 @@
+{
+	"info": {
+		"_postman_id": "1d70720c-3a86-4a09-9c4b-18b1836cff4f",
+		"name": "Juice Shop Security Testing",
+		"description": "| Test | Payload | Expected | Juice Shop Result | Finding |\n| --- | --- | --- | --- | --- |\n| Basic bypass | `' OR '1'='1'--` | 401 | 200 + token | Vulnerable |\n| Admin bypass | `admin@juice-sh.op'--` | 401 | 200 + token | Vulnerable |\n| UNION extraction | UNION SELECT ... FROM Users | 400/500 | 200 + data | Critical |\n| Store script tag | alert ('XSS by Mirage') | PUT /reviews | 400 | 200 stored |\n| Retrieve payload | – | GET /reviews | Encoded output | Raw script tag |\n| IDOR — other basket | GET /rest/basket/1 | 403 | 200 + data | IDOR (Insecure Direct Object Reference) |",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36861089",
+		"_collection_link": "https://www.postman.com/miragesth/workspace/my-workspace/collection/36861089-1d70720c-3a86-4a09-9c4b-18b1836cff4f?action=share&source=collection_link&creator=36861089"
+	},
+	"item": [
+		{
+			"name": "Unauthenticated Access (No Token) Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();\r",
+							"pm.environment.set(\"myUserId\", res.user.id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{authToken}}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/rest/user/whoami",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"user",
+						"whoami"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "find your own basket ID Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();\r",
+							"pm.environment.set(\"myUserId\", res.user.id);\r",
+							"console.log(res.user.id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/rest/user/whoami",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"user",
+						"whoami"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Access basket ID 1 (belongs to admin) Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"IDOR — cannot access other user basket (must be 403)\", () => {\r",
+							"  pm.response.to.have.status(403);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Other user data not returned\", () => {\r",
+							"  if (pm.response.code === 200) {\r",
+							"    const res = pm.response.json();\r",
+							"    pm.expect(res.data.UserId).to\r",
+							"      .equal(parseInt(pm.environment.get(\"myUserId\")));\r",
+							"  }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": " Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/rest/basket/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"basket",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Product ID Copy",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Store XSS Payload via Product Review Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Review POST returns 201 or 200\", () => {\r",
+							"  pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Server should have rejected script tag (400)\", () => {\r",
+							"  pm.response.to.have.status(400);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"message\": \"<script>alert('XSS by Mirage')</script>\",\r\n  \"author\": \"{{userEmail}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/rest/products/1/reviews",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"products",
+						"1",
+						"reviews"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve the Review and Check for Raw Script Tags Request Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const body = pm.response.text();\r",
+							"const res = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Reviews endpoint returns 200\", () => {\r",
+							"  pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Script tags must be escaped — not raw\", () => {\r",
+							"  pm.expect(body).to.not.include(\"<script>\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"No event handler attributes in response\", () => {\r",
+							"  pm.expect(body).to.not.include(\"onerror=\");\r",
+							"  pm.expect(body).to.not.include(\"onload=\");\r",
+							"  pm.expect(body).to.not.include(\"onclick=\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"No javascript: URIs in response\", () => {\r",
+							"  pm.expect(body).to.not.include(\"javascript:\");\r",
+							"});\r",
+							"\r",
+							"const scriptMatch = body.match(/<script.*?>.*?<\\/script>/gi);\r",
+							"\r",
+							"if (scriptMatch) {\r",
+							"    console.log(\"XSS Script Found:\");\r",
+							"    scriptMatch.forEach((script, index) => {\r",
+							"        console.log(`Script ${index + 1}:`, script);\r",
+							"    });\r",
+							"} else {\r",
+							"    console.log(\"No script tag found in response\");\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{authToken}",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/rest/products/1/reviews",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"products",
+						"1",
+						"reviews"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Register Account Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"User registered — status 201\", () => {\r",
+							"  pm.response.to.have.status(201);\r",
+							"  console.log(\"User registered successfully (Status 201)\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"miragesth@juice.com\",\r\n  \"password\": \"MirageSth@123!\",\r\n  \"passwordRepeat\": \"MirageSth@123!\",\r\n  \"securityQuestion\": { \"id\": 2 },\r\n  \"securityAnswer\": \"miragesth\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Users/",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Users",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Request Login Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Login successful — status 200\", () => {\r",
+							"  pm.response.to.have.status(200);\r",
+							"  console.log(\"Status is 200\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Token returned\", () => {\r",
+							"  pm.expect(res.authentication.token).to.be.a(\"string\");\r",
+							"});\r",
+							"\r",
+							"// Save the token for all future requests\r",
+							"pm.environment.set(\"authToken\", res.authentication.token);\r",
+							"console.log(\"Token received:\", res.authentication.token);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"{{userPassword}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/rest/user/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"user",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Basic Authentication Bypass Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();\r",
+							"const status = pm.response.code;\r",
+							"\r",
+							"pm.test(\"SQLi Basic Bypass — should return 401\", () => {\r",
+							"  // PASS: 401 = blocked. FAIL: 200 = VULNERABLE!\r",
+							"  pm.expect(status).to.equal(401);\r",
+							"  console.log(\"Status Code:\", status, \"(Expected: 401 - Protected / Else Vulnerable)\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"No token returned on SQLi attempt\", () => {\r",
+							"  pm.expect(res).to.not.have.property(\"authentication\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"No SQL error message leaked\", () => {\r",
+							"  const body = pm.response.text();\r",
+							"  pm.expect(body).to.not.include(\"SQLITE_ERROR\");\r",
+							"  pm.expect(body).to.not.include(\"syntax error\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"' OR '1'='1'--\",\r\n  \"password\": \"anything\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/rest/user/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"rest",
+						"user",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Target Admin Account with SQLi Copy",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "UNION-Based Data Extraction Copy",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}
