@@ -2,6 +2,8 @@
 
 A hands-on security testing project using **Postman** and **Newman** to identify and document real-world API vulnerabilities on the OWASP Juice Shop application. Covers SQL Injection, Cross-Site Scripting (XSS), and Broken Access Control.
 
+Newman Summary Report: https://api-security-testing-postman.vercel.app/
+
 ---
 
 ## 📌 Project Overview
