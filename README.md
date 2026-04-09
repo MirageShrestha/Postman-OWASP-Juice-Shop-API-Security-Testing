@@ -16,7 +16,6 @@ A hands-on security testing project using **Postman** and **Newman** to identify
 | **Local URL** | `http://localhost:3000` |
 | **Vulnerabilities Tested** | SQL Injection · XSS · Broken Access Control |
 | **Total Test Cases** | 14+ requests · 25+ assertions |
-| **Training Institute** | Broadway Infosys |
 
 ---
 
