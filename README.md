@@ -187,7 +187,6 @@ The report includes:
 | 3 | Stored XSS | 🔴 High | `PUT /rest/products/:id/reviews` | Script tag stored and returned unescaped |
 | 4 | IDOR | 🔴 High | `GET /rest/basket/:id` | Access any user's private basket |
 | 5 | Privilege Escalation | 🔴 High | `GET /api/Users/` | Regular user reads full user list |
-| 6 | Mass Assignment | 🔴 High | `PUT /api/Users/:id` | User can self-promote to admin role |
 
 ---
 
@@ -199,7 +198,6 @@ The report includes:
 | XSS | **Sanitize and encode** all user input before storing; use libraries like DOMPurify on output |
 | IDOR | Validate that the **authenticated user owns** the resource being requested |
 | Privilege Escalation | Enforce **role-based access control (RBAC)** on every protected endpoint server-side |
-| Mass Assignment | **Whitelist** only allowed fields in update operations — never accept `role` from user input |
 
 ---
 
